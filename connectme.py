@@ -76,7 +76,7 @@ def hostmeta(request):
         'link': ({
             'rel': 'openid',
             'href': 'https://%s/token_endpoint' % request._environ['HTTP_HOST'],  # "token endpoint" url?
-        }),
+        },),
     }
 
     return Response(json.dumps(hostmeta), content_type='application/json')
