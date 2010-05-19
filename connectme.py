@@ -8,7 +8,7 @@ from urllib import urlencode
 from itty import *
 
 from sessionstore import SessionStore
-from templateresponse import TemplateResponse
+from responses import TemplateResponse, OopsResponse
 
 
 log = logging.getLogger()
@@ -66,7 +66,7 @@ def index(request):
 def hostmeta(request):
     format = request.GET.get('format', 'json')
     if format != 'json':
-        return Response("Unsupported format %r; only 'json' is supported" % format, status=400, content_type='text/plain')
+        return OopsResponse("Unsupported format %r; only 'json' is supported", format)
 
     hostmeta = {
         'ns': {
@@ -86,7 +86,7 @@ def hostmeta(request):
 def token_endpoint(request):
     req_type = request.GET.get('type')
     if req_type != 'client_associate':
-        return Response('Unknown request type %r' % req_type, status=400, content_type='text/plain')
+        return OopsResponse('Unknown request type %r', req_type)
 
     # Register this client.
     redirect_uri = request.GET.get('redirect_uri')
@@ -104,6 +104,19 @@ def token_endpoint(request):
     }
 
     return Response(urlencode(resp_data), content_type='application/x-www-form-urlencoded')
+
+
+@get('/user_endpoint')
+def user_endpoint(request):
+    client_id = request.GET.get('client_id')
+    try:
+        Client.get_by_client_id(client_id)
+    except KeyError:
+        return OopsResponse("No such client %r", client_id)
+
+    scope = request.GET.get('scope')
+    if scope != 'openid':
+        return OopsResponse("Unknown scope %r", scope)
 
 
 if __name__ == '__main__':

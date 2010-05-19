@@ -11,7 +11,7 @@ from httplib2 import Http
 from itty import *
 
 from sessionstore import SessionStore
-from templateresponse import TemplateResponse
+from responses import TemplateResponse, OopsResponse, RedirectResponse
 
 
 log = logging.getLogger()
@@ -112,10 +112,10 @@ def discover_server(domain, redirect_uri):
     association = dict(parse_qsl(content))
 
     return {
-        'client_identifier': association['client_id'],
+        'client_id': association['client_id'],
         'client_secret': association['client_secret'],
-        'end_user_endpoint': association['user_endpoint_url'],
         'token_endpoint': token_endpoint,
+        'end_user_endpoint': association['user_endpoint_url'],
         'user_info_endpoint': None,  # this is the final identifier now?
     }
 
@@ -128,20 +128,30 @@ def discover(request):
     domain, identifier = identifier_for_url(openid_url)
     log.debug("Yay, cleaved the openid_url into %r and %r", domain, identifier)
 
+    redirect_uri = '%s/authorized' % (request._environ['HTTP_ORIGIN'],)
     if domain not in servers:
-        redirect_uri = '%s/associated' % (request._environ['HTTP_ORIGIN'],)
         try:
             servers[domain] = discover_server(domain, redirect_uri)
         except BadResponse, exc:
-            return Response('Oops: %s' % str(exc), content_type='text/plain')
+            return OopsResponse('Oops: %s', str(exc))
     server = servers[domain]
 
-    return Response(json.dumps(server), content_type='application/json')
+    # We have the server info. Now we send the viewer to the end-user endpoint.
+    scheme, netloc, path, query, fragment = urlsplit(server['end_user_endpoint'])
+    query = urlencode({
+        'type': 'web_server',
+        'client_id': server['client_id'],
+        'redirect_uri': redirect_uri,
+        'scope': 'openid',
+    })
+    authorize_url = urlunsplit((scheme, netloc, path, query, fragment))
+
+    return RedirectResponse(authorize_url)
 
 
-@get('/associated')
+@get('/authorized')
 @sessionize
-def associated(request):
+def authorized(request):
     return Response('homg sweet', content_type='text/plain')
 
 

@@ -22,3 +22,17 @@ class TemplateResponse(Response):
     @output.setter
     def output(self, val):
         pass  # ignore
+
+
+class RedirectResponse(Response):
+
+    def __init__(self, url, headers=None, status=302):
+        super(RedirectResponse, self).__init__('Redirecting to %s' % url, headers, status, content_type='text/plain')
+        self.add_header('Location', url)
+
+
+class OopsResponse(Response):
+
+    def __init__(self, str, *args):
+        message = str % args
+        super(OopsResponse, self).__init__(message, status=400, content_type='text/plain')
