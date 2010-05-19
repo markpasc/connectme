@@ -84,12 +84,12 @@ def hostmeta(request):
 
 @post('/token_endpoint')
 def token_endpoint(request):
-    req_type = request.POST.get('type')
+    req_type = request.GET.get('type')
     if req_type != 'client_associate':
         return Response('Unknown request type %r' % req_type, status=400, content_type='text/plain')
 
     # Register this client.
-    redirect_uri = request.POST.get('redirect_uri')
+    redirect_uri = request.GET.get('redirect_uri')
     try:
         client = Client.get_by_redirect_uri(redirect_uri)
     except KeyError:
