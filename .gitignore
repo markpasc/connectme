@@ -1,0 +1,4 @@
+.env-linux
+.env-mac
+connectme-cert.pem
+connectme-key.pem
