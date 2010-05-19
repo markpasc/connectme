@@ -19,6 +19,8 @@ get('/static/(?P<filename>.+)')(partial(serve_static_file, root=join(dirname(__f
 
 sessionize = SessionStore()
 
+servers = {}
+
 
 @get('/')
 @sessionize
@@ -80,6 +82,26 @@ def hostmeta_for_domain(domain):
     return hostmeta
 
 
+def discover_server(domain):
+    hostmeta = hostmeta_for_domain(domain)
+
+    if 'link' not in hostmeta:
+        raise BadResponse("hostmeta document contains no links")
+    openid_links = [link for link in hostmeta['link'] if link.get('rel') == 'openid']
+    if len(openid_links) != 1:
+        raise BadResponse("Expected one 'openid' link in hostmeta but there were %d", len(openid_links))
+
+    token_endpoint = openid_links[0]['href']
+
+    return {
+        'client_identifier': None,
+        'client_secret': None,
+        'end_user_endpoint': None,
+        'token_endpoint': token_endpoint,
+        'user_info_endpoint': None,
+    }
+
+
 @post('/discover')
 @sessionize
 def discover(request):
@@ -88,12 +110,14 @@ def discover(request):
     domain, identifier = identifier_for_url(openid_url)
     log.debug("Yay, cleaved the openid_url into %r and %r", domain, identifier)
 
-    try:
-        hostmeta = hostmeta_for_domain(domain)
-    except BadResponse, exc:
-        return Response('Oops: %s' % str(exc), content_type='text/plain')
+    if domain not in servers:
+        try:
+            servers[domain] = discover_server(domain)
+        except BadResponse, exc:
+            return Response('Oops: %s' % str(exc), content_type='text/plain')
+    server = servers[domain]
 
-    return Response(json.dumps(hostmeta), content_type='text/plain')
+    return Response(repr(server), content_type='text/plain')
 
 
 if __name__ == '__main__':
