@@ -4,7 +4,8 @@ import json
 import logging
 from os.path import join, dirname
 import socket
-from urlparse import urlsplit, urlunsplit
+from urllib import urlencode
+from urlparse import urlsplit, urlunsplit, parse_qsl
 
 from httplib2 import Http
 from itty import *
@@ -82,23 +83,40 @@ def hostmeta_for_domain(domain):
     return hostmeta
 
 
-def discover_server(domain):
+def discover_server(domain, redirect_uri):
     hostmeta = hostmeta_for_domain(domain)
 
     if 'link' not in hostmeta:
         raise BadResponse("hostmeta document contains no links")
     openid_links = [link for link in hostmeta['link'] if link.get('rel') == 'openid']
     if len(openid_links) != 1:
-        raise BadResponse("Expected one 'openid' link in hostmeta but there were %d", len(openid_links))
+        raise BadResponse("Expected one 'openid' link in hostmeta but there were %d" % len(openid_links))
 
+    # We aren't already associated, or we would have had the server info already. So do dynamic association.
     token_endpoint = openid_links[0]['href']
 
+    scheme, netloc, path, query, fragment = urlsplit(token_endpoint)
+    query = urlencode({
+        'type': 'client_associate',
+        'redirect_uri': redirect_uri,
+    })
+    associate_url = urlunsplit((scheme, netloc, path, query, fragment))
+
+    http = Http()
+    response, content = http.request(associate_url, method='POST')
+    if response.status != 200:
+        raise BadResponse("%d %s trying to associate" % (response.status, response.reason))
+    if not response['content-type'].startswith('application/x-www-form-urlencoded'):
+        raise BadResponse("Result of association was unexpected content type %r, not application/x-www-form-urlencoded" % response['content-type'])
+
+    association = dict(parse_qsl(content))
+
     return {
-        'client_identifier': None,
-        'client_secret': None,
-        'end_user_endpoint': None,
+        'client_identifier': association['client_id'],
+        'client_secret': association['client_secret'],
+        'end_user_endpoint': association['user_endpoint_url'],
         'token_endpoint': token_endpoint,
-        'user_info_endpoint': None,
+        'user_info_endpoint': None,  # this is the final identifier now?
     }
 
 
@@ -111,13 +129,20 @@ def discover(request):
     log.debug("Yay, cleaved the openid_url into %r and %r", domain, identifier)
 
     if domain not in servers:
+        redirect_uri = '%s/associated' % (request._environ['HTTP_ORIGIN'],)
         try:
-            servers[domain] = discover_server(domain)
+            servers[domain] = discover_server(domain, redirect_uri)
         except BadResponse, exc:
             return Response('Oops: %s' % str(exc), content_type='text/plain')
     server = servers[domain]
 
-    return Response(repr(server), content_type='text/plain')
+    return Response(json.dumps(server), content_type='application/json')
+
+
+@get('/associated')
+@sessionize
+def associated(request):
+    return Response('homg sweet', content_type='text/plain')
 
 
 if __name__ == '__main__':
