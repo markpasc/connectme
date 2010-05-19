@@ -64,7 +64,7 @@ def index(request):
 
 @get('/.well-known/host-meta')
 def hostmeta(request):
-    format = request.GET.get('format')
+    format = request.GET.get('format', 'json')
     if format != 'json':
         return Response("Unsupported format %r; only 'json' is supported" % format, status=400, content_type='text/plain')
 
@@ -79,7 +79,7 @@ def hostmeta(request):
         }),
     }
 
-    return Response(json.dumps(hostmeta), content_type='text/plain')
+    return Response(json.dumps(hostmeta), content_type='application/json')
 
 
 @post('/token_endpoint')
