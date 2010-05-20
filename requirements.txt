@@ -1,0 +1,3 @@
+itty==0.6.7
+Jinja2==2.4.1
+-e hg+http://httplib2.googlecode.com/hg/#egg=httplib2
