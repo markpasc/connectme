@@ -1,3 +1,4 @@
+import json
 from os.path import join, dirname
 
 from itty import Response, content_type
@@ -36,3 +37,10 @@ class OopsResponse(Response):
     def __init__(self, str, *args):
         message = str % args
         super(OopsResponse, self).__init__(message, status=400, content_type='text/plain')
+
+
+class JsonResponse(Response):
+
+    def __init__(self, obj, headers=None, status=200):
+        body = json.dumps(obj)
+        super(JsonResponse, self).__init__(body, headers, status, content_type='application/json')

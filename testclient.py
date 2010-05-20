@@ -19,7 +19,6 @@ log = logging.getLogger()
 get('/static/(?P<filename>.+)')(partial(serve_static_file, root=join(dirname(__file__), 'static')))
 
 sessionize = SessionStore()
-
 servers = {}
 
 
@@ -94,16 +93,13 @@ def discover_server(domain, redirect_uri):
 
     # We aren't already associated, or we would have had the server info already. So do dynamic association.
     token_endpoint = openid_links[0]['href']
-
-    scheme, netloc, path, query, fragment = urlsplit(token_endpoint)
-    query = urlencode({
+    body = urlencode({
         'type': 'client_associate',
         'redirect_uri': redirect_uri,
     })
-    associate_url = urlunsplit((scheme, netloc, path, query, fragment))
 
     http = Http()
-    response, content = http.request(associate_url, method='POST')
+    response, content = http.request(token_endpoint, method='POST', body=body, headers={'Content-Type': 'application/x-www-form-urlencoded'})
     if response.status != 200:
         raise BadResponse("%d %s trying to associate" % (response.status, response.reason))
     if not response['content-type'].startswith('application/x-www-form-urlencoded'):
