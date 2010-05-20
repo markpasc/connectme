@@ -2,9 +2,14 @@ from Cookie import SimpleCookie
 from functools import wraps
 import logging
 import random
+import string
 
 
 log = logging.getLogger(__name__)
+
+
+def squib(length):
+    return "".join(random.choice(string.lowercase + string.digits * 2) for i in range(length))
 
 
 class SessionStore(object):
@@ -20,7 +25,7 @@ class SessionStore(object):
             self.store[session_id]  # make sure it's a valid session
         except KeyError:
             cookie = SimpleCookie()
-            session_id = "".join(random.choice("abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)") for i in range(20))
+            session_id = squib(20)
             cookie['session_id'] = session_id
             self.store[session_id] = {}
             log.debug("Oops, made up a new session ID %r for new viewer", session_id)
@@ -43,3 +48,16 @@ class SessionStore(object):
         return sessioned
 
     __call__ = sessionize
+
+    def clear(self, fn):
+        @wraps(fn)
+        def desessioned(request, *args, **kwargs):
+            cookie = self.cookify(request)
+            session_id = cookie['session_id'].value
+
+            # Delete the session, so the next request will generate a new one.
+            if session_id in self.store:
+                del self.store[session_id]
+
+            return fn(request, *args, **kwargs)
+        return desessioned

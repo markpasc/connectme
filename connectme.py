@@ -9,12 +9,8 @@ from urlparse import urlsplit, urlunsplit
 
 from itty import *
 
-from sessionstore import SessionStore
+from sessionstore import SessionStore, squib
 from responses import TemplateResponse, OopsResponse, RedirectResponse, JsonResponse
-
-
-def squib(length):
-    return "".join(random.choice(string.lowercase + string.digits * 2) for i in range(length))
 
 
 log = logging.getLogger()
@@ -164,6 +160,7 @@ def grant_access_token(request):
 
     return JsonResponse({
         'access_token': token_token,
+        'user_id': 'https://%s/person/%s' % (request._environ['HTTP_HOST'], authorization['username']),
     })
 
 

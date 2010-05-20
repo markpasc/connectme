@@ -20,6 +20,7 @@ get('/static/(?P<filename>.+)')(partial(serve_static_file, root=join(dirname(__f
 
 sessionize = SessionStore()
 servers = {}
+access_tokens = {}
 
 
 @get('/')
@@ -28,6 +29,12 @@ def index(request):
     return TemplateResponse('index.html', {
         'user': request.session.get('user'),
     })
+
+
+@get('/signout')
+@sessionize.clear
+def signout(request):
+    return RedirectResponse('/')
 
 
 def identifier_for_url(openid_url):
@@ -142,13 +149,52 @@ def discover(request):
     })
     authorize_url = urlunsplit((scheme, netloc, path, query, fragment))
 
+    # Remember what server we're authorizing against, so we know later where to get the access token from.
+    request.session['auth_domain'] = domain
+
     return RedirectResponse(authorize_url)
 
 
 @get('/authorized')
 @sessionize
 def authorized(request):
-    return Response('homg sweet', content_type='text/plain')
+    code = request.GET.get('code')
+
+    # Sweet, get the access token.
+    try:
+        domain = request.session['auth_domain']
+    except KeyError:
+        return OopsResponse("Wanted to exchange a verification code for an access token, but couldn't remember what server I was talking to for you")
+    server = servers[domain]
+
+    token_endpoint = server['token_endpoint']
+    body = urlencode({
+        'type': 'web_server',
+        'client_id': server['client_id'],
+        'client_secret': server['client_secret'],
+        'code': code,
+        'redirect_uri': 'http://%s/authorized' % (request._environ['HTTP_HOST'],),
+    })
+    http = Http()
+    response, content = http.request(token_endpoint, method='POST', body=body, headers={'Content-Type': 'application/x-www-form-urlencoded'})
+    if response.status != 200:
+        if response['content-type'] == 'application/json':
+            response_obj = json.loads(content)
+            return OopsResponse("Couldn't exchange the verification code for an access token: %s: %s", response_obj['error'], response_obj.get('oops', None))
+        return OopsResponse("Unexpected %d %s response exchanging verification code for an access token", response.status, response.reason)
+
+    response_obj = json.loads(content)
+
+    access_token = response_obj['access_token']
+    request.session['access_token'] = access_token
+
+    user_id = response_obj['user_id']
+    request.session['user'] = user_id
+
+    # TODO: verify the signature we don't yet send
+    # TODO: do the User Info API request
+
+    return RedirectResponse('/')
 
 
 if __name__ == '__main__':
