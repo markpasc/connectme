@@ -26,7 +26,7 @@ access_tokens = {}
 @get('/')
 @sessionize
 def index(request):
-    return TemplateResponse('index.html', {
+    return TemplateResponse('testclient/index.html', {
         'user': request.session.get('user'),
     })
 

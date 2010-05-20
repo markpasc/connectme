@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+    <h1>Oh hey</h1>
+
+    <form method="POST" action="/user_authorized">
+        <input type="hidden" name="code" value="{{ code }}">
+        <p>This other server wants to know who you are.</p>
+        <p>Who are you again? <input type="text" name="username"></p>
+        <p>
+            <input type="submit" name="approve" value="Approve">
+            <a href="{{ redirect_uri }}?error=user_denied">Cancel</a>
+        </p>
+    </form>
+
+{% endblock %}
