@@ -1,0 +1,125 @@
+/* --------------------------------------------------------------
+
+    grid.css
+    * Sets up an easy-to-use grid of 24 columns.
+
+    By default, the grid is 950px wide, with 24 columns
+    spanning 30px, and a 10px margin between columns.
+
+    If you need fewer or more columns, namespaces or semantic
+    element names, use the compressor script (lib/compress.rb)
+
+    -------------------------------------------------------------- */
+
+.showgrid
+    background: url(src/grid.png)
+
+
+/* Columns
+    -------------------------------------------------------------- */
+
+=span(!cols)
+    float: left
+    margin-right: 10px
+    width = !cols * 30px + (!cols - 1) * 10px
+
+=append(!cols)
+    padding-right = 40px * !cols
+
+=prepend(!cols)
+    padding-left = 40px * !cols
+
+=pull(!cols)
+    float: left
+    position: relative
+    margin-left = -40px * !cols
+
+=push(!cols)
+    float: right
+    position: relative
+    margin-top: 0
+    margin-right = -40px * !cols
+    margin-left = 40px * !cols
+
+@for !i from 1 through 24
+    .span-#{!i}
+        +span(!i)
+    .append-#{!i}
+        +append(!i)
+    .prepend-#{!i}
+        +prepend(!i)
+    .pull-#{!i}
+        +pull(!i)
+    .push-#{!i}
+        +push(!i)
+
+=last
+    margin-right: 0
+
+.last
+    +last
+
+
+/* Misc classes and elements
+    -------------------------------------------------------------- */
+
+/* In case you need to add a gutter above/below an element */
+.prepend-top
+    margin-top: 1.5em
+
+.append-bottom
+    margin-bottom: 1.5em
+
+/* Use a .box to create a padded box inside a column.  */
+.box
+    padding: 1.5em
+    margin-bottom: 1.5em
+    background: #E5ECF9
+
+/* Use this to create a horizontal ruler across a column. */
+hr
+    background: #ddd
+    color: #ddd
+    clear: both
+    float: none
+    width: 100%
+    height: .1em
+    margin: 0 0 1.45em
+    border: none
+
+hr.space
+    background: #fff
+    color: #fff
+    visibility: hidden
+
+
+/*  Clearing floats without extra markup
+    Based on How To Clear Floats Without Structural Markup by PiE
+    [http://www.positioniseverything.net/easyclearing.html] */
+
+=clearfix
+    display: block
+    &:after
+        content: "\0020"
+        display: block
+        height: 0
+        clear: both
+        visibility: hidden
+        overflow: hidden
+
+.clearfix
+    +clearfix
+
+/*  Regular clearing
+    apply to column that should drop below previous ones. */
+
+.clear
+    clear: both
+
+=container
+    width: 950px
+    margin: 0 auto
+    +clearfix
+
+.container
+    +container
